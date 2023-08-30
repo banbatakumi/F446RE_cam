@@ -34,7 +34,16 @@ int main() {
       cam_3.attach(cam_3_rx, Serial::RxIrq);
       cam_4.baud(38400);
       cam_4.attach(cam_4_rx, Serial::RxIrq);
-
+      for (int i = 0; i < 10; i++) {
+            led_1 = 1;
+            wait_us(100000);
+            led_1 = 0;
+            wait_us(100000);
+      }
+      led_2 = 1;
+      wait_us(1000000);
+      led_2 = 0;
+      wait_us(1000000);
       while (1) {
       }
 }
