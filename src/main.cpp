@@ -1,11 +1,11 @@
 #include "mbed.h"
 
 // UART通信定義 (TX, RX)
-Serial main_mcu(PB_6, PB_7);
-Serial cam_1(PA_2, PA_3);
-Serial cam_2(PC_12, PD_2);
-Serial cam_3(PA_9, PA_10);
-Serial cam_4(PC_6, PC_7);
+RawSerial main_mcu(PB_6, PB_7);
+RawSerial cam_1(PA_2, PA_3);
+RawSerial cam_2(PC_12, PD_2);
+RawSerial cam_3(PA_9, PA_10);
+RawSerial cam_4(PC_6, PC_7);
 
 // 関数定義
 void main_mcu_rx();
@@ -32,9 +32,9 @@ uint8_t front_b_goal_size = 0;
 
 int main() {
       // 通信速度: 9600, 14400, 19200, 28800, 38400, 57600, 115200
-      main_mcu.baud(9600);
-      //main_mcu.attach(main_mcu_rx, Serial::RxIrq);
-      cam_1.baud(38400);
+      main_mcu.baud(57600);
+      // main_mcu.attach(main_mcu_rx, Serial::RxIrq);
+      cam_1.baud(115200);
       cam_1.attach(cam_1_rx, Serial::RxIrq);
       /*
       cam_2.baud(9600);
@@ -45,7 +45,7 @@ int main() {
       cam_4.attach(cam_4_rx, Serial::RxIrq);*/
 
       while (1) {
-            main_mcu.putc('H');
+            main_mcu.putc(0xFF);
             main_mcu.putc(front_ball_x);
             main_mcu.putc(front_ball_y);
             main_mcu.putc(front_y_goal_x);
@@ -54,8 +54,9 @@ int main() {
             main_mcu.putc(front_b_goal_x);
             main_mcu.putc(front_b_goal_y);
             main_mcu.putc(front_b_goal_size);
+            main_mcu.putc(0xAA);
 
-            if (front_b_goal_x > 100) {
+            if (front_ball_x > 100) {
                   led_1 = 1;
             } else {
                   led_1 = 0;
@@ -64,31 +65,41 @@ int main() {
 }
 
 void cam_1_rx() {
-      if(cam_1.getc() == 'H'){
-            front_ball_x = cam_1.getc();
-            front_ball_y = cam_1.getc();
-            front_y_goal_x = cam_1.getc();
-            front_y_goal_y = cam_1.getc();
-            front_y_goal_size = cam_1.getc();
-            front_b_goal_x = cam_1.getc();
-            front_b_goal_y = cam_1.getc();
-            front_b_goal_size = cam_1.getc();
+      const uint8_t recv_byte_num = 10;
+      uint8_t recv_byte[recv_byte_num];
+
+      for (int i = 0; i < recv_byte_num; i++) {
+            recv_byte[i] = cam_1.getc();   // 一旦すべてのデータを格納する
       }
-}/*
-
-void cam_2_rx() {
-      led_2 = 1;
-}
-
-void cam_3_rx() {
-      led_3 = 1;
-      if (cam_3.getc() == 'H') {
-            back_ball_x = cam_3.getc();
-            back_ball_y = cam_3.getc();
+      if (recv_byte[0] == 0xFF && recv_byte[recv_byte_num - 1] == 0xAA) {   // ヘッダーとフッターがあることを確認
+            front_ball_x = recv_byte[1];
+            front_ball_y = recv_byte[2];
+            front_y_goal_x = recv_byte[3];
+            front_y_goal_y = recv_byte[4];
+            front_y_goal_size = recv_byte[5];
+            front_b_goal_x = recv_byte[6];
+            front_b_goal_y = recv_byte[7];
+            front_b_goal_size = recv_byte[8];
       }
-}
 
-void cam_4_rx() {
-      led_4 = 1;
-}
-*/
+      while (cam_1.readable() == 1) {   // 受信データがなくなるまで読み続ける・受信バッファを空にする
+            cam_1.getc();   // データは格納されない
+      }
+} /*
+
+ void cam_2_rx() {
+       led_2 = 1;
+ }
+
+ void cam_3_rx() {
+       led_3 = 1;
+       if (cam_3.getc() == 'H') {
+             back_ball_x = cam_3.getc();
+             back_ball_y = cam_3.getc();
+       }
+ }
+
+ void cam_4_rx() {
+       led_4 = 1;
+ }
+ */
