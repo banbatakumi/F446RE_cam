@@ -5,11 +5,11 @@
 #define CAM_UART_SPEED 115200
 
 // UART通信定義 (TX, RX)
-RawSerial mainMcu(PC_10, PC_11);
-RawSerial cam1(PA_2, PA_3);
-RawSerial cam2(PC_12, PD_2);
-RawSerial cam3(PA_9, PA_10);
-RawSerial cam4(PC_6, PC_7);
+RawSerial mainSerial(PC_10, PC_11);
+RawSerial cam1Serial(PA_2, PA_3);
+RawSerial cam2Serial(PC_12, PD_2);
+RawSerial cam3Serial(PA_9, PA_10);
+RawSerial cam4Serial(PC_6, PC_7);
 
 MovingAve ballDirAve;
 MovingAve ballDisAve;
@@ -19,21 +19,18 @@ MovingAve bGoalDirAve;
 MovingAve bGoalSizeAve;
 
 // 関数定義
-// void MainMcuRx();
-void Cam1Rx();
-void Cam2Rx();
-void Cam3Rx();
-void Cam4Rx();
+void MainMcu();
+void Cam1();
+void Cam2();
+void Cam3();
+void Cam4();
 
 void BallConversion();
 void YGoalConversion();
 void BGoalConversion();
 
 // ピン定義
-DigitalOut led1(PB_10);
-DigitalOut led2(PB_2);
-DigitalOut led3(PB_1);
-DigitalOut led4(PB_0);
+DigitalOut led[4] = {PB_10, PB_2, PB_1, PB_0};
 
 // グローバル変数定義
 uint8_t ball_dir[CAM_QTY];
@@ -52,37 +49,38 @@ int16_t rslt_y_goal_size;
 int16_t rslt_b_goal_dir;
 int16_t rslt_b_goal_size;
 
-int8_t ball_th[4] = {22, 70, 29, 77};
+int8_t ball_th[4] = {29, 74, 16, 65};
 
-int8_t y_goal_th[4] = {-15, 14, 47, 77};
+int8_t y_goal_th[4] = {-20, 21, 30, 76};
 
-int8_t b_goal_th[4] = {20, 45, -61, -41};
+int8_t b_goal_th[4] = {26, 78, -98, -51};
 
 uint8_t send_byte_num = 15;
 uint8_t send_byte[15];
 bool do_th_send = 1;
+uint8_t mode = 0;
 
 Timer thSendTimer;
 
-int main() {
+void setup() {
       // 通信速度: 9600, 14400, 19200, 28800, 38400, 57600, 115200
-      mainMcu.baud(115200);
-      // mainMcu.attach(MainMcuRx, Serial::RxIrq);
-      cam1.baud(CAM_UART_SPEED);
-      cam1.attach(&Cam1Rx, Serial::RxIrq);
-      cam2.baud(CAM_UART_SPEED);
-      cam2.attach(&Cam2Rx, Serial::RxIrq);
-      cam3.baud(CAM_UART_SPEED);
-      cam3.attach(&Cam3Rx, Serial::RxIrq);
-      cam4.baud(CAM_UART_SPEED);
-      cam4.attach(&Cam4Rx, Serial::RxIrq);
+      mainSerial.baud(115200);
+      // mainSerial.attach(&MainMcu);
+      cam1Serial.baud(CAM_UART_SPEED);
+      cam1Serial.attach(&Cam1);
+      cam2Serial.baud(CAM_UART_SPEED);
+      cam2Serial.attach(&Cam2);
+      cam3Serial.baud(CAM_UART_SPEED);
+      cam3Serial.attach(&Cam3);
+      cam4Serial.baud(CAM_UART_SPEED);
+      cam4Serial.attach(&Cam4);
 
-      ballDirAve.SetLength(10);
-      ballDisAve.SetLength(10);
-      yGoalDirAve.SetLength(10);
-      yGoalSizeAve.SetLength(10);
-      bGoalDirAve.SetLength(10);
-      bGoalSizeAve.SetLength(10);
+      ballDirAve.SetLength(5);
+      ballDisAve.SetLength(5);
+      yGoalDirAve.SetLength(5);
+      yGoalSizeAve.SetLength(5);
+      bGoalDirAve.SetLength(5);
+      bGoalSizeAve.SetLength(5);
 
       send_byte[0] = 0xFF;
       send_byte[1] = ball_th[0] + 127;
@@ -99,21 +97,21 @@ int main() {
       send_byte[12] = b_goal_th[3] + 127;
       send_byte[13] = 0xAA;
 
-      led1 = 1;
-      wait_us(1000000);
-      led2 = 1;
-      wait_us(1000000);
-      led3 = 1;
-      wait_us(1000000);
-      led4 = 1;
-      wait_us(2000000);
-      led1 = 0;
-      led2 = 0;
-      led3 = 0;
-      led4 = 0;
+      __disable_irq();   // 禁止
+      for (int i = 0; i < 4; i++) {
+            led[i] = 1;
+            wait_us(1000000);
+      }
+      for (int i = 0; i < 4; i++) {
+            led[i] = 0;
+      }
+      __enable_irq();   // 許可
 
       thSendTimer.start();
+}
 
+int main() {
+      setup();
       while (1) {
             if (thSendTimer.read() > 5) {
                   thSendTimer.stop();
@@ -133,23 +131,7 @@ int main() {
             bGoalDirAve.Compute(&rslt_b_goal_dir);
             bGoalSizeAve.Compute(&rslt_b_goal_size);
 
-            uint8_t send_byte_num = 11;
-            uint8_t send_byte[send_byte_num];
-            send_byte[0] = 0xFF;
-            send_byte[1] = rslt_ball_dir > 0 ? rslt_ball_dir : 0;
-            send_byte[2] = rslt_ball_dir < 0 ? rslt_ball_dir * -1 : 0;
-            send_byte[3] = rslt_ball_dis;
-            send_byte[4] = rslt_y_goal_dir > 0 ? rslt_y_goal_dir : 0;
-            send_byte[5] = rslt_y_goal_dir < 0 ? rslt_y_goal_dir * -1 : 0;
-            send_byte[6] = rslt_y_goal_size;
-            send_byte[7] = rslt_b_goal_dir > 0 ? rslt_b_goal_dir : 0;
-            send_byte[8] = rslt_b_goal_dir < 0 ? rslt_b_goal_dir * -1 : 0;
-            send_byte[9] = rslt_b_goal_size;
-            send_byte[10] = 0xAA;
-
-            for (uint8_t i = 0; i < send_byte_num; i++) {
-                  mainMcu.putc(send_byte[i]);
-            }
+            MainMcu();
       }
 }
 
@@ -222,14 +204,40 @@ void BGoalConversion() {
       rslt_b_goal_dir = SimplifyDeg(rslt_b_goal_dir);
 }
 
-void Cam1Rx() {
-      if (cam1.getc() == 0xFF) {
-            led1 = 1;
+void MainMcu() {
+      // 送信
+      uint8_t send_byte_num = 11;
+      uint8_t send_byte[send_byte_num];
+      send_byte[0] = 0xFF;
+      send_byte[1] = rslt_ball_dir > 0 ? rslt_ball_dir : 0;
+      send_byte[2] = rslt_ball_dir < 0 ? rslt_ball_dir * -1 : 0;
+      send_byte[3] = rslt_ball_dis;
+      send_byte[4] = rslt_y_goal_dir > 0 ? rslt_y_goal_dir : 0;
+      send_byte[5] = rslt_y_goal_dir < 0 ? rslt_y_goal_dir * -1 : 0;
+      send_byte[6] = rslt_y_goal_size;
+      send_byte[7] = rslt_b_goal_dir > 0 ? rslt_b_goal_dir : 0;
+      send_byte[8] = rslt_b_goal_dir < 0 ? rslt_b_goal_dir * -1 : 0;
+      send_byte[9] = rslt_b_goal_size;
+      send_byte[10] = 0xAA;
+
+      for (uint8_t i = 0; i < send_byte_num; i++) {
+            mainSerial.putc(send_byte[i]);
+      }
+
+      // 受信
+      if (mainSerial.readable()) mode = mainSerial.getc();
+}
+
+void Cam1() {
+      if (cam1Serial.getc() == 0xFF) {
+            if (mode == 0) led[0] = 1;
+
+            // 受信
             const uint8_t recv_byte_num = 7;
             uint8_t recv_byte[recv_byte_num];
 
             for (int i = 0; i < recv_byte_num; i++) {
-                  recv_byte[i] = cam1.getc();   // 一旦すべてのデータを格納する
+                  recv_byte[i] = cam1Serial.getc();   // 一旦すべてのデータを格納する
             }
 
             if (recv_byte[recv_byte_num - 1] == 0xAA) {   // ヘッダーとフッターがあることを確認
@@ -243,26 +251,29 @@ void Cam1Rx() {
                   return;
             }
 
+            // 送信
             if (do_th_send == 1) {
                   for (uint8_t i = 0; i < send_byte_num; i++) {
-                        cam1.putc(send_byte[i]);
+                        cam1Serial.putc(send_byte[i]);
                   }
             }
 
-            led1 = 0;
+            led[0] = 0;
       } else {
             return;
       }
 }
 
-void Cam2Rx() {
-      if (cam2.getc() == 0xFF) {
-            led2 = 1;
+void Cam2() {
+      if (cam2Serial.getc() == 0xFF) {
+            if (mode == 0) led[1] = 1;
+
+            // 受信
             const uint8_t recv_byte_num = 7;
             uint8_t recv_byte[recv_byte_num];
 
             for (int i = 0; i < recv_byte_num; i++) {
-                  recv_byte[i] = cam2.getc();   // 一旦すべてのデータを格納する
+                  recv_byte[i] = cam2Serial.getc();   // 一旦すべてのデータを格納する
             }
 
             if (recv_byte[recv_byte_num - 1] == 0xAA) {   // ヘッダーとフッターがあることを確認
@@ -276,26 +287,29 @@ void Cam2Rx() {
                   return;
             }
 
+            // 送信
             if (do_th_send == 1) {
                   for (uint8_t i = 0; i < send_byte_num; i++) {
-                        cam2.putc(send_byte[i]);
+                        cam2Serial.putc(send_byte[i]);
                   }
             }
 
-            led2 = 0;
+            led[1] = 0;
       } else {
             return;
       }
 }
 
-void Cam3Rx() {
-      if (cam3.getc() == 0xFF) {
-            led3 = 1;
+void Cam3() {
+      if (cam3Serial.getc() == 0xFF) {
+            if (mode == 0) led[2] = 1;
+
+            // 受信
             const uint8_t recv_byte_num = 7;
             uint8_t recv_byte[recv_byte_num];
 
             for (int i = 0; i < recv_byte_num; i++) {
-                  recv_byte[i] = cam3.getc();   // 一旦すべてのデータを格納する
+                  recv_byte[i] = cam3Serial.getc();   // 一旦すべてのデータを格納する
             }
 
             if (recv_byte[recv_byte_num - 1] == 0xAA) {   // ヘッダーとフッターがあることを確認
@@ -309,26 +323,29 @@ void Cam3Rx() {
                   return;
             }
 
+            // 送信
             if (do_th_send == 1) {
                   for (uint8_t i = 0; i < send_byte_num; i++) {
-                        cam3.putc(send_byte[i]);
+                        cam3Serial.putc(send_byte[i]);
                   }
             }
 
-            led3 = 0;
+            led[2] = 0;
       } else {
             return;
       }
 }
 
-void Cam4Rx() {
-      if (cam4.getc() == 0xFF) {
-            led4 = 1;
+void Cam4() {
+      if (cam4Serial.getc() == 0xFF) {
+            if (mode == 0) led[3] = 1;
+
+            // 受信
             const uint8_t recv_byte_num = 7;
             uint8_t recv_byte[recv_byte_num];
 
             for (int i = 0; i < recv_byte_num; i++) {
-                  recv_byte[i] = cam4.getc();   // 一旦すべてのデータを格納する
+                  recv_byte[i] = cam4Serial.getc();   // 一旦すべてのデータを格納する
             }
 
             if (recv_byte[recv_byte_num - 1] == 0xAA) {   // ヘッダーとフッターがあることを確認
@@ -342,13 +359,14 @@ void Cam4Rx() {
                   return;
             }
 
+            // 送信
             if (do_th_send == 1) {
                   for (uint8_t i = 0; i < send_byte_num; i++) {
-                        cam4.putc(send_byte[i]);
+                        cam4Serial.putc(send_byte[i]);
                   }
             }
 
-            led4 = 0;
+            led[3] = 0;
       } else {
             return;
       }
