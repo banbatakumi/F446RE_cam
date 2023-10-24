@@ -100,7 +100,7 @@ void setup() {
       __disable_irq();   // 禁止
       for (int i = 0; i < 4; i++) {
             led[i] = 1;
-            wait_us(1000000);
+            wait_us(500000);
       }
       for (int i = 0; i < 4; i++) {
             led[i] = 0;
@@ -113,7 +113,7 @@ void setup() {
 int main() {
       setup();
       while (1) {
-            if (thSendTimer.read() > 5) {
+            if (thSendTimer.read() > 2.5) {
                   thSendTimer.stop();
                   thSendTimer.reset();
                   do_th_send = 0;
