@@ -41,28 +41,16 @@ int16_t rslt_yellow_goal_size;
 int16_t rslt_blue_goal_dir;
 int16_t rslt_blue_goal_size;
 
-int8_t ball_th[4] = {29, 74, 16, 65};
-
-int8_t yellow_goal_th[4] = {-20, 21, 30, 76};
-
-int8_t blue_goal_th[4] = {26, 78, -98, -51};
-
 void setup() {
       // 通信速度: 9600, 14400, 19200, 28800, 38400, 57600, 115200
       mainSerial.baud(115200);
 
       ballDirAve.SetLength(5);
       ballDisAve.SetLength(5);
-      yGoalDirAve.SetLength(5);
-      yGoalSizeAve.SetLength(5);
-      bGoalDirAve.SetLength(5);
-      bGoalSizeAve.SetLength(5);
-
-      for (int i = 0; i < CAM_QTY; i++) {
-            m1n[i].SetBallTh(ball_th);
-            m1n[i].SetYellowGoalTh(yellow_goal_th);
-            m1n[i].SetBlueGoalTh(blue_goal_th);
-      }
+      yGoalDirAve.SetLength(15);
+      yGoalSizeAve.SetLength(15);
+      bGoalDirAve.SetLength(15);
+      bGoalSizeAve.SetLength(15);
 
       __disable_irq();   // 禁止
       for (int i = 0; i < 4; i++) {
