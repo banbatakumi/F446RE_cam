@@ -3,7 +3,8 @@
 #include "simplify_deg.h"
 
 #define CAM_QTY 4
-#define CAM_UART_SPEED 115200
+
+#define SendTime(baud_, byte_num_) 1 / baud_ * 10 * byte_num_ * 1000000
 
 // UART通信定義 (TX, RX)
 RawSerial mainSerial(PC_10, PC_11);
@@ -167,7 +168,7 @@ void BGoalConversion() {
 }
 
 void MainMcu() {
-      uint8_t send_byte_num = 10;
+      uint8_t send_byte_num = 11;
       uint8_t send_byte[send_byte_num];
       send_byte[0] = 0xFF;
       send_byte[1] = rslt_ball_dir > 0 ? rslt_ball_dir : 0;
@@ -179,9 +180,10 @@ void MainMcu() {
       send_byte[7] = rslt_blue_goal_dir > 0 ? rslt_blue_goal_dir : 0;
       send_byte[8] = rslt_blue_goal_dir < 0 ? rslt_blue_goal_dir * -1 : 0;
       send_byte[9] = rslt_blue_goal_size;
+      send_byte[10] = 0xAA;
 
       for (uint8_t i = 0; i < send_byte_num; i++) {
             mainSerial.putc(send_byte[i]);
       }
-      wait_us(100);
+      wait_us(SendTime(115200, send_byte_num));
 }
