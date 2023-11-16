@@ -3,7 +3,7 @@
 #include "mbed.h"
 
 M1n::M1n(PinName tx_, PinName rx_) : serial(tx_, rx_) {
-      serial.baud(115200);
+      serial.baud(230400);
       serial.attach(callback(this, &M1n::Receive), Serial::RxIrq);
 }
 
@@ -46,28 +46,4 @@ void M1n::Receive() {
             }
             data_length = 0;
       }
-}
-
-int16_t M1n::GetBallDir() {
-      return ball_dir;
-}
-
-uint8_t M1n::GetBallDis() {
-      return ball_dis;
-}
-
-int16_t M1n::GetYellowGoalDir() {
-      return yellow_goal_dir;
-}
-
-uint8_t M1n::GetYellowGoalSize() {
-      return yellow_goal_size;
-}
-
-int16_t M1n::GetBlueGoalDir() {
-      return blue_goal_dir;
-}
-
-uint8_t M1n::GetBlueGoalSize() {
-      return blue_goal_size;
 }

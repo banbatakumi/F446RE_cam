@@ -68,17 +68,23 @@ int main() {
       setup();
       while (1) {
             for (int i = 0; i < CAM_QTY; i++) {
-                  ball_dir[i] = m1n[i].GetBallDir();
-                  ball_dis[i] = m1n[i].GetBallDis();
-                  yellow_goal_dir[i] = m1n[i].GetYellowGoalDir();
-                  yellow_goal_size[i] = m1n[i].GetYellowGoalSize();
-                  blue_goal_dir[i] = m1n[i].GetBlueGoalDir();
-                  blue_goal_size[i] = m1n[i].GetBlueGoalSize();
+                  ball_dir[i] = m1n[i].ball_dir;
+                  ball_dis[i] = m1n[i].ball_dis;
+                  yellow_goal_dir[i] = m1n[i].yellow_goal_dir;
+                  yellow_goal_size[i] = m1n[i].yellow_goal_size;
+                  blue_goal_dir[i] = m1n[i].blue_goal_dir;
+                  blue_goal_size[i] = m1n[i].blue_goal_size;
             }
 
             BallConversion();
             YGoalConversion();
             BGoalConversion();
+
+            if (ball_dir[1] - 45 > 0) {
+                  led[0] = 1;
+            } else {
+                  led[0] = 0;
+            }
 
             // それぞれの値に移動平均をかける
             ballDirAve.Compute(&rslt_ball_dir);
@@ -128,8 +134,8 @@ void YGoalConversion() {
       }
       rslt_yellow_goal_size = max_size;
 
-      if (rslt_ball_dis == 0) {
-            rslt_ball_dir = 0;
+      if (rslt_yellow_goal_size == 0) {
+            rslt_yellow_goal_dir = 0;
       } else if (max_size_num == 0) {
             rslt_yellow_goal_dir = yellow_goal_dir[0] - 45;
       } else if (max_size_num == 1) {
@@ -153,8 +159,8 @@ void BGoalConversion() {
       }
       rslt_blue_goal_size = max_size;
 
-      if (rslt_ball_dis == 0) {
-            rslt_ball_dir = 0;
+      if (rslt_blue_goal_size == 0) {
+            rslt_blue_goal_dir = 0;
       } else if (max_size_num == 0) {
             rslt_blue_goal_dir = blue_goal_dir[0] - 45;
       } else if (max_size_num == 1) {
@@ -168,7 +174,7 @@ void BGoalConversion() {
 }
 
 void MainMcu() {
-      uint8_t send_byte_num = 11;
+      const uint8_t send_byte_num = 11;
       uint8_t send_byte[send_byte_num];
       send_byte[0] = 0xFF;
       send_byte[1] = rslt_ball_dir > 0 ? rslt_ball_dir : 0;
