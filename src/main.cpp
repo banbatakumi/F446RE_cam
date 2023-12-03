@@ -1,4 +1,5 @@
 #include "m1n.h"
+#include "mbed.h"
 #include "moving_ave.h"
 #include "simplify_deg.h"
 
@@ -44,7 +45,7 @@ int16_t rslt_blue_goal_size;
 
 void setup() {
       // 通信速度: 9600, 14400, 19200, 28800, 38400, 57600, 115200
-      mainSerial.baud(115200);
+      mainSerial.baud(230400);
 
       ballDirAve.SetLength(5);
       ballDisAve.SetLength(5);
@@ -79,12 +80,6 @@ int main() {
             BallConversion();
             YGoalConversion();
             BGoalConversion();
-
-            if (ball_dir[1] - 45 > 0) {
-                  led[0] = 1;
-            } else {
-                  led[0] = 0;
-            }
 
             // それぞれの値に移動平均をかける
             ballDirAve.Compute(&rslt_ball_dir);
@@ -174,7 +169,7 @@ void BGoalConversion() {
 }
 
 void MainMcu() {
-      const uint8_t send_byte_num = 11;
+      const uint8_t send_byte_num = 12;
       uint8_t send_byte[send_byte_num];
       send_byte[0] = 0xFF;
       send_byte[1] = rslt_ball_dir > 0 ? rslt_ball_dir : 0;
@@ -186,10 +181,11 @@ void MainMcu() {
       send_byte[7] = rslt_blue_goal_dir > 0 ? rslt_blue_goal_dir : 0;
       send_byte[8] = rslt_blue_goal_dir < 0 ? rslt_blue_goal_dir * -1 : 0;
       send_byte[9] = rslt_blue_goal_size;
-      send_byte[10] = 0xAA;
+      send_byte[10] = m1n[0].is_goal_front;
+      send_byte[11] = 0xAA;
 
       for (uint8_t i = 0; i < send_byte_num; i++) {
             mainSerial.putc(send_byte[i]);
       }
-      wait_us(SendTime(115200, send_byte_num));
+      wait_us(SendTime(230400, send_byte_num));
 }

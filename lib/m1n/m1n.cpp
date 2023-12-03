@@ -9,7 +9,8 @@ M1n::M1n(PinName tx_, PinName rx_) : serial(tx_, rx_) {
 
 void M1n::Receive() {
       static uint8_t data_length;   // データの長さ
-      static uint8_t recv_data[6];
+      const uint8_t recv_data_num = 7;
+      static uint8_t recv_data[recv_data_num];
 
       if (data_length == 0) {   // ヘッダの受信
             if (serial.getc() == 0xFF) {
@@ -17,25 +18,7 @@ void M1n::Receive() {
             } else {
                   data_length = 0;
             }
-      } else if (data_length == 1) {
-            recv_data[0] = serial.getc();
-            data_length++;
-      } else if (data_length == 2) {
-            recv_data[1] = serial.getc();
-            data_length++;
-      } else if (data_length == 3) {
-            recv_data[2] = serial.getc();
-            data_length++;
-      } else if (data_length == 4) {
-            recv_data[3] = serial.getc();
-            data_length++;
-      } else if (data_length == 5) {
-            recv_data[4] = serial.getc();
-            data_length++;
-      } else if (data_length == 6) {
-            recv_data[5] = serial.getc();
-            data_length++;
-      } else if (data_length == 7) {
+      } else if (data_length == recv_data_num + 1) {
             if (serial.getc() == 0xAA) {
                   ball_dir = recv_data[0];
                   ball_dis = recv_data[1];
@@ -43,7 +26,11 @@ void M1n::Receive() {
                   yellow_goal_size = recv_data[3];
                   blue_goal_dir = recv_data[4];
                   blue_goal_size = recv_data[5];
+                  is_goal_front = recv_data[6];
             }
             data_length = 0;
+      } else {
+            recv_data[data_length - 1] = serial.getc();
+            data_length++;
       }
 }

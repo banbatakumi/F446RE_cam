@@ -13,6 +13,7 @@ class M1n {
       uint8_t yellow_goal_size;
       uint8_t blue_goal_dir;
       uint8_t blue_goal_size;
+      bool is_goal_front;
 
      private:
       RawSerial serial;
