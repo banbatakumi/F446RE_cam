@@ -9,11 +9,11 @@ class M1n {
 
       uint8_t ball_dir;
       uint8_t ball_dis;
-      uint8_t yellow_goal_dir;
-      uint8_t yellow_goal_size;
-      uint8_t blue_goal_dir;
-      uint8_t blue_goal_size;
+      uint8_t goal_dir;
+      uint8_t goal_size;
+      uint8_t bool_data;
       bool is_goal_front;
+      bool is_goal_yellow;
 
      private:
       RawSerial serial;

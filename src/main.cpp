@@ -35,7 +35,7 @@ int16_t rslt_blue_goal_size;
 
 void setup() {
       // 通信速度: 9600, 14400, 19200, 28800, 38400, 57600, 115200
-      mainSerial.baud(230400);
+      mainSerial.baud(115200);
 
       __disable_irq();   // 禁止
       for (int i = 0; i < 4; i++) {
@@ -54,10 +54,17 @@ int main() {
             for (int i = 0; i < CAM_QTY; i++) {
                   ball_dir[i] = m1n[i].ball_dir;
                   ball_dis[i] = m1n[i].ball_dis;
-                  yellow_goal_dir[i] = m1n[i].yellow_goal_dir;
-                  yellow_goal_size[i] = m1n[i].yellow_goal_size;
-                  blue_goal_dir[i] = m1n[i].blue_goal_dir;
-                  blue_goal_size[i] = m1n[i].blue_goal_size;
+                  if (m1n[i].is_goal_yellow == 1) {
+                        yellow_goal_dir[i] = m1n[i].goal_dir;
+                        yellow_goal_size[i] = m1n[i].goal_size;
+                        blue_goal_dir[i] = 0;
+                        blue_goal_size[i] = 0;
+                  } else {
+                        yellow_goal_dir[i] = 0;
+                        yellow_goal_size[i] = 0;
+                        blue_goal_dir[i] = m1n[i].goal_dir;
+                        blue_goal_size[i] = m1n[i].goal_size;
+                  }
             }
 
             BallConversion();
@@ -144,20 +151,17 @@ void BGoalConversion() {
 }
 
 void MainMcu() {
-      const uint8_t send_byte_num = 12;
+      const uint8_t send_byte_num = 9;
       uint8_t send_byte[send_byte_num];
       send_byte[0] = 0xFF;
-      send_byte[1] = rslt_ball_dir > 0 ? rslt_ball_dir : 0;
-      send_byte[2] = rslt_ball_dir < 0 ? rslt_ball_dir * -1 : 0;
-      send_byte[3] = rslt_ball_dis;
-      send_byte[4] = rslt_yellow_goal_dir > 0 ? rslt_yellow_goal_dir : 0;
-      send_byte[5] = rslt_yellow_goal_dir < 0 ? rslt_yellow_goal_dir * -1 : 0;
-      send_byte[6] = rslt_yellow_goal_size;
-      send_byte[7] = rslt_blue_goal_dir > 0 ? rslt_blue_goal_dir : 0;
-      send_byte[8] = rslt_blue_goal_dir < 0 ? rslt_blue_goal_dir * -1 : 0;
-      send_byte[9] = rslt_blue_goal_size;
-      send_byte[10] = m1n[0].is_goal_front;
-      send_byte[11] = 0xAA;
+      send_byte[1] = rslt_ball_dir / 2 + 90;
+      send_byte[2] = rslt_ball_dis;
+      send_byte[3] = rslt_yellow_goal_dir / 2 + 90;
+      send_byte[4] = rslt_yellow_goal_size;
+      send_byte[5] = rslt_blue_goal_dir / 2 + 90;
+      send_byte[6] = rslt_blue_goal_size;
+      send_byte[7] = m1n[0].is_goal_front;
+      send_byte[8] = 0xAA;
 
       for (uint8_t i = 0; i < send_byte_num; i++) {
             mainSerial.putc(send_byte[i]);
