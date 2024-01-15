@@ -5,8 +5,12 @@
 #define CAM_QTY 4
 
 // UART通信定義 (TX, RX)
-RawSerial mainSerial(PC_10, PC_11);
-M1n m1n[CAM_QTY] = {M1n(PA_2, PA_3), M1n(PC_12, PD_2), M1n(PA_9, PA_10), M1n(PC_6, PC_7)};
+UnbufferedSerial mainSerial(PC_10, PC_11);
+//M1n m1n[CAM_QTY] = {(PA_2, PA_3), (PC_12, PD_2), (PA_9, PA_10), (PC_6, PC_7)};
+M1n m1n_1(PA_2, PA_3);
+M1n m1n_2(PC_12, PD_2);
+M1n m1n_3(PA_9, PA_10);
+M1n m1n_4(PC_6, PC_7);
 
 // 関数定義
 void MainMcu();
@@ -51,20 +55,57 @@ void setup() {
 int main() {
       setup();
       while (1) {
-            for (int i = 0; i < CAM_QTY; i++) {
-                  ball_dir[i] = m1n[i].ball_dir;
-                  ball_dis[i] = m1n[i].ball_dis;
-                  if (m1n[i].is_goal_yellow == 1) {
-                        yellow_goal_dir[i] = m1n[i].goal_dir;
-                        yellow_goal_size[i] = m1n[i].goal_size;
-                        blue_goal_dir[i] = 0;
-                        blue_goal_size[i] = 0;
-                  } else {
-                        yellow_goal_dir[i] = 0;
-                        yellow_goal_size[i] = 0;
-                        blue_goal_dir[i] = m1n[i].goal_dir;
-                        blue_goal_size[i] = m1n[i].goal_size;
-                  }
+            ball_dir[0] = m1n_1.ball_dir;
+            ball_dis[0] = m1n_1.ball_dis;
+            if (m1n_1.is_goal_yellow == 1) {
+                  yellow_goal_dir[0] = m1n_1.goal_dir;
+                  yellow_goal_size[0] = m1n_1.goal_size;
+                  blue_goal_dir[0] = 0;
+                  blue_goal_size[0] = 0;
+            } else {
+                  yellow_goal_dir[0] = 0;
+                  yellow_goal_size[0] = 0;
+                  blue_goal_dir[0] = m1n_1.goal_dir;
+                  blue_goal_size[0] = m1n_1.goal_size;
+            }
+            ball_dir[1] = m1n_2.ball_dir;
+            ball_dis[1] = m1n_2.ball_dis;
+            if (m1n_2.is_goal_yellow == 1) {
+                  yellow_goal_dir[1] = m1n_2.goal_dir;
+                  yellow_goal_size[1] = m1n_2.goal_size;
+                  blue_goal_dir[1] = 0;
+                  blue_goal_size[1] = 0;
+            } else {
+                  yellow_goal_dir[1] = 0;
+                  yellow_goal_size[1] = 0;
+                  blue_goal_dir[1] = m1n_2.goal_dir;
+                  blue_goal_size[1] = m1n_2.goal_size;
+            }
+            ball_dir[2] = m1n_3.ball_dir;
+            ball_dis[2] = m1n_3.ball_dis;
+            if (m1n_3.is_goal_yellow == 1) {
+                  yellow_goal_dir[2] = m1n_3.goal_dir;
+                  yellow_goal_size[2] = m1n_3.goal_size;
+                  blue_goal_dir[2] = 0;
+                  blue_goal_size[2] = 0;
+            } else {
+                  yellow_goal_dir[2] = 0;
+                  yellow_goal_size[2] = 0;
+                  blue_goal_dir[2] = m1n_3.goal_dir;
+                  blue_goal_size[2] = m1n_3.goal_size;
+            }
+            ball_dir[3] = m1n_4.ball_dir;
+            ball_dis[3] = m1n_4.ball_dis;
+            if (m1n_4.is_goal_yellow == 1) {
+                  yellow_goal_dir[3] = m1n_4.goal_dir;
+                  yellow_goal_size[3] = m1n_4.goal_size;
+                  blue_goal_dir[3] = 0;
+                  blue_goal_size[3] = 0;
+            } else {
+                  yellow_goal_dir[3] = 0;
+                  yellow_goal_size[3] = 0;
+                  blue_goal_dir[3] = m1n_4.goal_dir;
+                  blue_goal_size[3] = m1n_4.goal_size;
             }
 
             BallConversion();
@@ -160,10 +201,8 @@ void MainMcu() {
       send_byte[4] = rslt_yellow_goal_size;
       send_byte[5] = rslt_blue_goal_dir / 2 + 90;
       send_byte[6] = rslt_blue_goal_size;
-      send_byte[7] = m1n[0].is_goal_front;
+      send_byte[7] = m1n_1.is_goal_front;
       send_byte[8] = 0xAA;
 
-      for (uint8_t i = 0; i < send_byte_num; i++) {
-            mainSerial.putc(send_byte[i]);
-      }
+      mainSerial.write(&send_byte, send_byte_num);
 }

@@ -16,7 +16,7 @@ class M1n {
       bool is_goal_yellow;
 
      private:
-      RawSerial serial;
+      UnbufferedSerial serial;
       void Receive();
 };
 
