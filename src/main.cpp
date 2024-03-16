@@ -3,10 +3,13 @@
 #include "simplify_deg.h"
 
 #define CAM_QTY 4
+#define BALL_MISS_TIME 500   // ボールを見失った時にゼロにするまでの時間
+#define GOAL_MISS_TIME 1000  // ゴールを見失った時にゼロにするまでの時間
+
+#define readms(timer_name_) chrono::duration_cast<chrono::milliseconds>((timer_name_).elapsed_time()).count()  // MbedOS6のタイマー
 
 // UART通信定義 (TX, RX)
 UnbufferedSerial mainSerial(PC_10, PC_11);
-//M1n m1n[CAM_QTY] = {(PA_2, PA_3), (PC_12, PD_2), (PA_9, PA_10), (PC_6, PC_7)};
 M1n m1n_1(PA_2, PA_3);
 M1n m1n_2(PC_12, PD_2);
 M1n m1n_3(PA_9, PA_10);
@@ -14,10 +17,15 @@ M1n m1n_4(PC_6, PC_7);
 
 // 関数定義
 void MainMcu();
-
 void BallConversion();
-void YGoalConversion();
-void BGoalConversion();
+void YellowGoalConversion();
+void BlueGoalConversion();
+void ValueAssignment();
+
+// タイマー
+Timer missYellowGoalTimer;
+Timer missBlueGoalTimer;
+Timer missBallTimer;
 
 // ピン定義
 DigitalOut led[4] = {PB_10, PB_2, PB_1, PB_0};
@@ -37,11 +45,18 @@ int16_t rslt_yellow_goal_size;
 int16_t rslt_blue_goal_dir;
 int16_t rslt_blue_goal_size;
 
+int16_t pre_rslt_ball_dir;
+int16_t pre_rslt_ball_dis;
+int16_t pre_rslt_yellow_goal_dir;
+int16_t pre_rslt_yellow_goal_size;
+int16_t pre_rslt_blue_goal_dir;
+int16_t pre_rslt_blue_goal_size;
+
 void setup() {
       // 通信速度: 9600, 14400, 19200, 28800, 38400, 57600, 115200
       mainSerial.baud(115200);
 
-      __disable_irq();   // 禁止
+      __disable_irq();  // 禁止
       for (int i = 0; i < 4; i++) {
             led[i] = 1;
             wait_us(500000);
@@ -49,77 +64,26 @@ void setup() {
       for (int i = 0; i < 4; i++) {
             led[i] = 0;
       }
-      __enable_irq();   // 許可
+      __enable_irq();  // 許可
 }
 
 int main() {
       setup();
       while (1) {
-            ball_dir[0] = m1n_1.ball_dir;
-            ball_dis[0] = m1n_1.ball_dis;
-            if (m1n_1.is_goal_yellow == 1) {
-                  yellow_goal_dir[0] = m1n_1.goal_dir;
-                  yellow_goal_size[0] = m1n_1.goal_size;
-                  blue_goal_dir[0] = 0;
-                  blue_goal_size[0] = 0;
-            } else {
-                  yellow_goal_dir[0] = 0;
-                  yellow_goal_size[0] = 0;
-                  blue_goal_dir[0] = m1n_1.goal_dir;
-                  blue_goal_size[0] = m1n_1.goal_size;
-            }
-            ball_dir[1] = m1n_2.ball_dir;
-            ball_dis[1] = m1n_2.ball_dis;
-            if (m1n_2.is_goal_yellow == 1) {
-                  yellow_goal_dir[1] = m1n_2.goal_dir;
-                  yellow_goal_size[1] = m1n_2.goal_size;
-                  blue_goal_dir[1] = 0;
-                  blue_goal_size[1] = 0;
-            } else {
-                  yellow_goal_dir[1] = 0;
-                  yellow_goal_size[1] = 0;
-                  blue_goal_dir[1] = m1n_2.goal_dir;
-                  blue_goal_size[1] = m1n_2.goal_size;
-            }
-            ball_dir[2] = m1n_3.ball_dir;
-            ball_dis[2] = m1n_3.ball_dis;
-            if (m1n_3.is_goal_yellow == 1) {
-                  yellow_goal_dir[2] = m1n_3.goal_dir;
-                  yellow_goal_size[2] = m1n_3.goal_size;
-                  blue_goal_dir[2] = 0;
-                  blue_goal_size[2] = 0;
-            } else {
-                  yellow_goal_dir[2] = 0;
-                  yellow_goal_size[2] = 0;
-                  blue_goal_dir[2] = m1n_3.goal_dir;
-                  blue_goal_size[2] = m1n_3.goal_size;
-            }
-            ball_dir[3] = m1n_4.ball_dir;
-            ball_dis[3] = m1n_4.ball_dis;
-            if (m1n_4.is_goal_yellow == 1) {
-                  yellow_goal_dir[3] = m1n_4.goal_dir;
-                  yellow_goal_size[3] = m1n_4.goal_size;
-                  blue_goal_dir[3] = 0;
-                  blue_goal_size[3] = 0;
-            } else {
-                  yellow_goal_dir[3] = 0;
-                  yellow_goal_size[3] = 0;
-                  blue_goal_dir[3] = m1n_4.goal_dir;
-                  blue_goal_size[3] = m1n_4.goal_size;
-            }
+            ValueAssignment();
 
             BallConversion();
-            YGoalConversion();
-            BGoalConversion();
+            YellowGoalConversion();
+            BlueGoalConversion();
 
-            MainMcu();
+            MainMcu();  // UART
       }
 }
 
 void BallConversion() {
       uint8_t max_dis = 0;
       uint8_t max_dis_num = 0;
-      for (int i = 0; i < CAM_QTY; i++) {
+      for (int i = 0; i < CAM_QTY; i++) {  // ロボットから一番近いボールを捉えているカメラを特定
             if (ball_dis[i] > max_dis) {
                   max_dis = ball_dis[i];
                   max_dis_num = i;
@@ -127,10 +91,23 @@ void BallConversion() {
       }
       rslt_ball_dis = max_dis;
 
-      if (rslt_ball_dis == 0) {
-            rslt_ball_dir = 0;
+      if (rslt_ball_dis != 0) {
+            missBallTimer.reset();
+            missBallTimer.stop();
+      }
+
+      if (rslt_ball_dis == 0) {  // ボールが見つからない
+            missBallTimer.start();
+            if (readms(missBallTimer) > BALL_MISS_TIME) {
+                  rslt_ball_dir = 0;
+                  rslt_ball_dis = 0;
+                  missBallTimer.stop();
+            } else {
+                  rslt_ball_dir = pre_rslt_ball_dir;
+                  rslt_ball_dis = pre_rslt_ball_dis;
+            }
       } else if (max_dis_num == 0) {
-            rslt_ball_dir = ball_dir[0] - 45;
+            rslt_ball_dir = ball_dir[0] + 315;
       } else if (max_dis_num == 1) {
             rslt_ball_dir = ball_dir[1] + 45;
       } else if (max_dis_num == 2) {
@@ -139,12 +116,15 @@ void BallConversion() {
             rslt_ball_dir = ball_dir[3] + 225;
       }
       rslt_ball_dir = SimplifyDeg(rslt_ball_dir);
+
+      pre_rslt_ball_dir = rslt_ball_dir;
+      pre_rslt_ball_dis = rslt_ball_dis;
 }
 
-void YGoalConversion() {
+void YellowGoalConversion() {
       uint8_t max_size = 0;
       uint8_t max_size_num = 0;
-      for (int i = 0; i < CAM_QTY; i++) {
+      for (int i = 0; i < CAM_QTY; i++) {  // ゴールの縦サイズが一番大きいカメラを特定
             if (yellow_goal_size[i] > max_size) {
                   max_size = yellow_goal_size[i];
                   max_size_num = i;
@@ -152,10 +132,23 @@ void YGoalConversion() {
       }
       rslt_yellow_goal_size = max_size;
 
-      if (rslt_yellow_goal_size == 0) {
-            rslt_yellow_goal_dir = 0;
+      if (rslt_yellow_goal_size != 0) {
+            missYellowGoalTimer.reset();
+            missYellowGoalTimer.stop();
+      }
+
+      if (rslt_yellow_goal_size == 0) {  // ゴールが見つからない
+            missYellowGoalTimer.start();
+            if (readms(missYellowGoalTimer) > GOAL_MISS_TIME) {
+                  rslt_yellow_goal_dir = 0;
+                  rslt_yellow_goal_size = 0;
+                  missYellowGoalTimer.stop();
+            } else {
+                  rslt_yellow_goal_dir = pre_rslt_yellow_goal_dir;
+                  rslt_yellow_goal_size = pre_rslt_yellow_goal_size;
+            }
       } else if (max_size_num == 0) {
-            rslt_yellow_goal_dir = yellow_goal_dir[0] - 45;
+            rslt_yellow_goal_dir = yellow_goal_dir[0] + 315;
       } else if (max_size_num == 1) {
             rslt_yellow_goal_dir = yellow_goal_dir[1] + 45;
       } else if (max_size_num == 2) {
@@ -164,12 +157,15 @@ void YGoalConversion() {
             rslt_yellow_goal_dir = yellow_goal_dir[3] + 225;
       }
       rslt_yellow_goal_dir = SimplifyDeg(rslt_yellow_goal_dir);
+
+      pre_rslt_yellow_goal_dir = rslt_yellow_goal_dir;
+      pre_rslt_yellow_goal_size = rslt_yellow_goal_size;
 }
 
-void BGoalConversion() {
+void BlueGoalConversion() {
       uint8_t max_size = 0;
       uint8_t max_size_num = 0;
-      for (int i = 0; i < CAM_QTY; i++) {
+      for (int i = 0; i < CAM_QTY; i++) {  // ゴールの縦サイズが一番大きいカメラを特定
             if (blue_goal_size[i] > max_size) {
                   max_size = blue_goal_size[i];
                   max_size_num = i;
@@ -177,10 +173,23 @@ void BGoalConversion() {
       }
       rslt_blue_goal_size = max_size;
 
-      if (rslt_blue_goal_size == 0) {
-            rslt_blue_goal_dir = 0;
+      if (rslt_blue_goal_size != 0) {
+            missBlueGoalTimer.reset();
+            missBlueGoalTimer.stop();
+      }
+
+      if (rslt_blue_goal_size == 0) {  // ゴールが見つからない
+            missBlueGoalTimer.start();
+            if (readms(missBlueGoalTimer) > GOAL_MISS_TIME) {
+                  rslt_blue_goal_dir = 0;
+                  rslt_blue_goal_size = 0;
+                  missBlueGoalTimer.stop();
+            } else {
+                  rslt_blue_goal_dir = pre_rslt_blue_goal_dir;
+                  rslt_blue_goal_size = pre_rslt_blue_goal_size;
+            }
       } else if (max_size_num == 0) {
-            rslt_blue_goal_dir = blue_goal_dir[0] - 45;
+            rslt_blue_goal_dir = blue_goal_dir[0] + 315;
       } else if (max_size_num == 1) {
             rslt_blue_goal_dir = blue_goal_dir[1] + 45;
       } else if (max_size_num == 2) {
@@ -189,6 +198,9 @@ void BGoalConversion() {
             rslt_blue_goal_dir = blue_goal_dir[3] + 225;
       }
       rslt_blue_goal_dir = SimplifyDeg(rslt_blue_goal_dir);
+
+      pre_rslt_blue_goal_dir = rslt_blue_goal_dir;
+      pre_rslt_blue_goal_size = rslt_blue_goal_size;
 }
 
 void MainMcu() {
@@ -205,4 +217,63 @@ void MainMcu() {
       send_byte[8] = 0xAA;
 
       mainSerial.write(&send_byte, send_byte_num);
+}
+
+void ValueAssignment() {  // それぞれのカメラからの情報を配列にまとめる
+      // 前カメラ
+      ball_dir[0] = m1n_1.ball_dir;
+      ball_dis[0] = m1n_1.ball_dis;
+      yellow_goal_dir[0] = 0;
+      yellow_goal_size[0] = 0;
+      blue_goal_dir[0] = 0;
+      blue_goal_size[0] = 0;
+      if (m1n_1.is_goal_yellow == 1) {
+            yellow_goal_dir[0] = m1n_1.goal_dir;
+            yellow_goal_size[0] = m1n_1.goal_size;
+      } else {
+            blue_goal_dir[0] = m1n_1.goal_dir;
+            blue_goal_size[0] = m1n_1.goal_size;
+      }
+      // 右カメラ
+      ball_dir[1] = m1n_2.ball_dir;
+      ball_dis[1] = m1n_2.ball_dis;
+      yellow_goal_dir[1] = 0;
+      yellow_goal_size[1] = 0;
+      blue_goal_dir[1] = 0;
+      blue_goal_size[1] = 0;
+      if (m1n_2.is_goal_yellow == 1) {
+            yellow_goal_dir[1] = m1n_2.goal_dir;
+            yellow_goal_size[1] = m1n_2.goal_size;
+      } else {
+            blue_goal_dir[1] = m1n_2.goal_dir;
+            blue_goal_size[1] = m1n_2.goal_size;
+      }
+      // 後カメラ
+      ball_dir[2] = m1n_3.ball_dir;
+      ball_dis[2] = m1n_3.ball_dis;
+      yellow_goal_dir[2] = 0;
+      yellow_goal_size[2] = 0;
+      blue_goal_dir[2] = 0;
+      blue_goal_size[2] = 0;
+      if (m1n_3.is_goal_yellow == 1) {
+            yellow_goal_dir[2] = m1n_3.goal_dir;
+            yellow_goal_size[2] = m1n_3.goal_size;
+      } else {
+            blue_goal_dir[2] = m1n_3.goal_dir;
+            blue_goal_size[2] = m1n_3.goal_size;
+      }
+      // 左カメラ
+      ball_dir[3] = m1n_4.ball_dir;
+      ball_dis[3] = m1n_4.ball_dis;
+      yellow_goal_dir[3] = 0;
+      yellow_goal_size[3] = 0;
+      blue_goal_dir[3] = 0;
+      blue_goal_size[3] = 0;
+      if (m1n_4.is_goal_yellow == 1) {
+            yellow_goal_dir[3] = m1n_4.goal_dir;
+            yellow_goal_size[3] = m1n_4.goal_size;
+      } else {
+            blue_goal_dir[3] = m1n_4.goal_dir;
+            blue_goal_size[3] = m1n_4.goal_size;
+      }
 }
