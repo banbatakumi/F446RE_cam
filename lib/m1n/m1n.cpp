@@ -9,7 +9,7 @@ M1n::M1n(PinName tx_, PinName rx_) : serial(tx_, rx_) {
 
 void M1n::Receive() {
       static uint8_t data_length;
-      const uint8_t recv_data_num = 5;  // 受信データ数
+      const uint8_t recv_data_num = 6;  // 受信データ数
       static uint8_t recv_data[recv_data_num];
       uint8_t read_byte;
       serial.read(&read_byte, 1);
@@ -26,7 +26,8 @@ void M1n::Receive() {
                   ball_dis = recv_data[1];
                   goal_dir = recv_data[2];
                   goal_size = recv_data[3];
-                  bool_data = recv_data[4];
+                  enemy_dir = recv_data[4];
+                  bool_data = recv_data[5];
                   is_goal_yellow = bool_data & 1;
                   is_goal_front = (bool_data >> 1) & 1;
             }

@@ -204,7 +204,7 @@ void BlueGoalConversion() {
 }
 
 void MainMcu() {
-      const uint8_t send_byte_num = 9;
+      const uint8_t send_byte_num = 10;
       uint8_t send_byte[send_byte_num];
       send_byte[0] = 0xFF;
       send_byte[1] = rslt_ball_dir / 2 + 90;
@@ -213,8 +213,9 @@ void MainMcu() {
       send_byte[4] = rslt_yellow_goal_size;
       send_byte[5] = rslt_blue_goal_dir / 2 + 90;
       send_byte[6] = rslt_blue_goal_size;
-      send_byte[7] = m1n_1.is_goal_front;
-      send_byte[8] = 0xAA;
+      send_byte[7] = SimplifyDeg(m1n_1.enemy_dir - 45);
+      send_byte[8] = m1n_1.is_goal_front;
+      send_byte[9] = 0xAA;
 
       mainSerial.write(&send_byte, send_byte_num);
 }
