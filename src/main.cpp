@@ -213,7 +213,7 @@ void MainMcu() {
       send_byte[4] = rslt_yellow_goal_size;
       send_byte[5] = rslt_blue_goal_dir / 2 + 90;
       send_byte[6] = rslt_blue_goal_size;
-      send_byte[7] = SimplifyDeg(m1n_1.enemy_dir - 45);
+      send_byte[7] = m1n_1.enemy_dir;
       send_byte[8] = m1n_1.is_goal_front;
       send_byte[9] = 0xAA;
 
