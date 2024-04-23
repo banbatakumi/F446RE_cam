@@ -13,6 +13,7 @@ class M1n {
       uint8_t goal_size;
       uint8_t bool_data;
       uint8_t enemy_dir;
+      uint8_t court_dis;
       bool is_goal_front;
       bool is_goal_yellow;
 

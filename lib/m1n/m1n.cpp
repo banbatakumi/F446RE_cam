@@ -3,7 +3,7 @@
 #include "mbed.h"
 
 M1n::M1n(PinName tx_, PinName rx_) : serial(tx_, rx_) {
-      serial.baud(115200);
+      serial.baud(230400);
       serial.attach(callback(this, &M1n::Receive), SerialBase::RxIrq);  // シリアル割り込みの設定
 }
 
@@ -30,6 +30,7 @@ void M1n::Receive() {
                   bool_data = recv_data[5];
                   is_goal_yellow = bool_data & 1;
                   is_goal_front = (bool_data >> 1) & 1;
+                  court_dis = (bool_data >> 2) & 0b00111111;
             }
             data_length = 0;
       } else {
