@@ -58,7 +58,7 @@ int16_t pre_rslt_blue_goal_size;
 
 void setup() {
       // 通信速度: 9600, 14400, 19200, 28800, 38400, 57600, 115200
-      mainSerial.baud(115200);
+      mainSerial.baud(230400);
 
       __disable_irq();  // 禁止
       for (int i = 0; i < 4; i++) {
