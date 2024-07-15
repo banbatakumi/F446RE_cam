@@ -8,13 +8,6 @@
 
 #define readms(timer_name_) chrono::duration_cast<chrono::milliseconds>((timer_name_).elapsed_time()).count()  // MbedOS6のタイマー
 
-// UART通信定義 (TX, RX)
-UnbufferedSerial mainSerial(PC_10, PC_11);
-M1n m1n_1(PA_2, PA_3);
-M1n m1n_2(PC_12, PD_2);
-M1n m1n_3(PA_9, PA_10);
-M1n m1n_4(PC_6, PC_7);
-
 // 関数定義
 void MainMcu();
 void BallConversion();
@@ -56,9 +49,18 @@ int16_t pre_rslt_yellow_goal_size;
 int16_t pre_rslt_blue_goal_dir;
 int16_t pre_rslt_blue_goal_size;
 
+int16_t own_dir;
+
+// UART通信定義 (TX, RX)
+UnbufferedSerial mainSerial(PC_10, PC_11);
+M1n m1n_1(PA_2, PA_3, &own_dir);
+M1n m1n_2(PC_12, PD_2, &own_dir);
+M1n m1n_3(PA_9, PA_10, &own_dir);
+M1n m1n_4(PC_6, PC_7, &own_dir);
+
 void setup() {
       // 通信速度: 9600, 14400, 19200, 28800, 38400, 57600, 115200
-      mainSerial.baud(230400);
+      mainSerial.baud(115200);
 
       __disable_irq();  // 禁止
       for (int i = 0; i < 4; i++) {
@@ -210,23 +212,28 @@ void BlueGoalConversion() {
 }
 
 void MainMcu() {
-      const uint8_t send_byte_num = 13;
+      const uint8_t send_byte_num = 14;
       uint8_t send_byte[send_byte_num];
       send_byte[0] = 0xFF;
       send_byte[1] = (uint8_t)(((uint16_t)(rslt_ball_dir + 32768) & 0xFF00) >> 8);
       send_byte[2] = (uint8_t)((uint16_t)(rslt_ball_dir + 32768) & 0x00FF);
       send_byte[3] = rslt_ball_dis;
-      send_byte[4] = rslt_yellow_goal_dir / 2 + 90;
+      send_byte[4] = rslt_yellow_goal_dir * 0.5 + 90;
       send_byte[5] = rslt_yellow_goal_size;
-      send_byte[6] = rslt_blue_goal_dir / 2 + 90;
+      send_byte[6] = rslt_blue_goal_dir * 0.5 + 90;
       send_byte[7] = rslt_blue_goal_size;
-      send_byte[8] = m1n_1.enemy_dir;
-      send_byte[9] = rslt_own_x + 127;
-      send_byte[10] = rslt_own_y + 127;
-      send_byte[11] = m1n_1.is_goal_front;
-      send_byte[12] = 0xAA;
+      send_byte[8] = m1n_1.proximity;
+      send_byte[9] = m1n_3.proximity;
+      send_byte[10] = rslt_own_x + 127;
+      send_byte[11] = rslt_own_y + 127;
+      send_byte[12] = m1n_1.is_goal_front;
+      send_byte[13] = 0xAA;
 
       mainSerial.write(&send_byte, send_byte_num);
+
+      uint8_t read_byte;
+      mainSerial.read(&read_byte, 1);
+      own_dir = read_byte * 2 - 180;
 }
 
 void OwnPositionConversion() {
